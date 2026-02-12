@@ -1,0 +1,565 @@
+import React, { useState, useEffect } from 'react';
+import { 
+  Upload, 
+  FileText, 
+  Camera, 
+  ChefHat, 
+  DollarSign, 
+  TrendingUp, 
+  Settings, 
+  Trash2, 
+  CheckCircle, 
+  AlertCircle,
+  Search,
+  Menu,
+  X,
+  ArrowRight,
+  ShoppingBag,
+  Clock
+} from 'lucide-react';
+
+// --- MOCK DATA & SIMULATION LOGIC ---
+
+// Base de datos simulada de ofertas extraídas de "PDFs"
+const MOCK_EXTRACTED_OFFERS = [
+  { id: 1, product: "Pechuga de Pollo", price: 5.99, unit: "kg", store: "Mercadona", category: "Carnes", discount: "20%", quality: "Alta" },
+  { id: 2, product: "Arroz Redondo", price: 0.99, unit: "kg", store: "Lidl", category: "Despensa", discount: "15%", quality: "Media" },
+  { id: 3, product: "Salmón Fresco", price: 9.50, unit: "kg", store: "Carrefour", category: "Pescados", discount: "30%", quality: "Premium" },
+  { id: 4, product: "Brócoli", price: 1.20, unit: "ud", store: "Aldi", category: "Verduras", discount: "10%", quality: "Bio" },
+  { id: 5, product: "Aceite de Oliva", price: 8.50, unit: "l", store: "Mercadona", category: "Despensa", discount: "5%", quality: "Alta" },
+  { id: 6, product: "Huevos Camperos", price: 2.10, unit: "docena", store: "Lidl", category: "Huevos", discount: "12%", quality: "Alta" },
+];
+
+// Base de recetas posibles
+const RECIPE_DB = [
+  { 
+    name: "Pollo al Limón con Arroz", 
+    ingredients: ["Pechuga de Pollo", "Arroz Redondo", "Limón"], 
+    cost: 2.50, 
+    time: "30 min",
+    instructions: "1. Cortar el pollo en dados. 2. Marinar con limón. 3. Cocer el arroz. 4. Saltear el pollo hasta dorar."
+  },
+  { 
+    name: "Salmón al Horno con Brócoli", 
+    ingredients: ["Salmón Fresco", "Brócoli", "Aceite de Oliva"], 
+    cost: 4.50, 
+    time: "20 min",
+    instructions: "1. Precalentar horno a 200°C. 2. Colocar salmón y brócoli en bandeja. 3. Rociar aceite. 4. Hornear 15 min."
+  },
+  { 
+    name: "Tortilla de Brócoli", 
+    ingredients: ["Huevos Camperos", "Brócoli", "Aceite de Oliva"], 
+    cost: 1.80, 
+    time: "15 min",
+    instructions: "1. Hervir brócoli 5 min. 2. Batir huevos. 3. Mezclar y cuajar en sartén con aceite."
+  },
+  { 
+    name: "Arroz Tres Delicias Casero", 
+    ingredients: ["Arroz Redondo", "Huevos Camperos", "Pechuga de Pollo"], 
+    cost: 2.10, 
+    time: "25 min",
+    instructions: "1. Cocer arroz y enfriar. 2. Hacer tortilla francesa fina y cortar. 3. Saltear pollo. 4. Mezclar todo en wok."
+  }
+];
+
+export default function MercadoSmart() {
+  const [activeTab, setActiveTab] = useState('dashboard');
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  
+  // State del Usuario
+  const [uploadedFiles, setUploadedFiles] = useState([]);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [offers, setOffers] = useState([]);
+  const [budget, setBudget] = useState(50);
+  const [vetoedIngredients, setVetoedIngredients] = useState("");
+  const [generatedMenu, setGeneratedMenu] = useState(null);
+  const [viewRecipe, setViewRecipe] = useState(null);
+
+  // --- ACTIONS ---
+
+  const handleUpload = (type) => {
+    setIsProcessing(true);
+    // Simular latencia de red y procesamiento de IA (Gemini)
+    setTimeout(() => {
+      const newFile = {
+        id: Date.now(),
+        name: type === 'pdf' ? `Folleto_Semanal_${uploadedFiles.length + 1}.pdf` : `Ticket_Compra_${uploadedFiles.length + 1}.jpg`,
+        type: type,
+        date: new Date().toLocaleDateString(),
+        status: 'Procesado'
+      };
+      setUploadedFiles([newFile, ...uploadedFiles]);
+      
+      // Simular extracción de datos incremental
+      const newOffers = [...MOCK_EXTRACTED_OFFERS].sort(() => 0.5 - Math.random()).slice(0, 4);
+      setOffers(prev => [...prev, ...newOffers]); // Añadir ofertas aleatorias simuladas
+      
+      setIsProcessing(false);
+    }, 2000);
+  };
+
+  const generateMenu = () => {
+    setIsProcessing(true);
+    setTimeout(() => {
+      // Lógica simple de filtrado para la demo
+      const vetoList = vetoedIngredients.toLowerCase().split(',').map(s => s.trim());
+      
+      const availableRecipes = RECIPE_DB.filter(recipe => {
+        // Filtrar por veto
+        const hasVetoed = recipe.ingredients.some(ing => 
+          vetolist.some(veto => veto && ing.toLowerCase().includes(veto))
+        );
+        return !hasVetoed;
+      });
+
+      // Construir menú semanal simulado
+      const days = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+      const menu = days.map(day => {
+        const lunch = availableRecipes[Math.floor(Math.random() * availableRecipes.length)];
+        const dinner = availableRecipes[Math.floor(Math.random() * availableRecipes.length)];
+        return { day, lunch, dinner };
+      });
+      
+      const totalCost = menu.reduce((acc, curr) => acc + (curr.lunch?.cost || 0) + (curr.dinner?.cost || 0), 0);
+      
+      setGeneratedMenu({ weeklyPlan: menu, totalCost });
+      setIsProcessing(false);
+    }, 2500);
+  };
+
+  // --- COMPONENTS ---
+
+  const SidebarItem = ({ id, icon: Icon, label }) => (
+    <button 
+      onClick={() => { setActiveTab(id); if(window.innerWidth < 768) setIsSidebarOpen(false); }}
+      className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-200 ${
+        activeTab === id 
+          ? 'bg-emerald-100 text-emerald-800 font-semibold' 
+          : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800'
+      }`}
+    >
+      <Icon size={20} />
+      <span>{label}</span>
+    </button>
+  );
+
+  const StatCard = ({ title, value, sub, icon: Icon, color }) => (
+    <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex items-start justify-between">
+      <div>
+        <p className="text-slate-500 text-sm font-medium">{title}</p>
+        <h3 className="text-3xl font-bold text-slate-800 mt-1">{value}</h3>
+        <p className={`text-xs mt-2 font-medium ${color}`}>{sub}</p>
+      </div>
+      <div className={`p-3 rounded-xl ${color.replace('text', 'bg').replace('600', '100')}`}>
+        <Icon className={color.replace('text-', '')} size={24} />
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="flex h-screen bg-slate-50 font-sans text-slate-900 overflow-hidden">
+      
+      {/* SIDEBAR */}
+      <aside className={`fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-slate-200 transform transition-transform duration-300 ease-in-out ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:relative md:translate-x-0`}>
+        <div className="p-6 flex items-center justify-between">
+          <div className="flex items-center space-x-2">
+            <div className="bg-emerald-600 p-2 rounded-lg">
+              <ShoppingBag className="text-white" size={20} />
+            </div>
+            <span className="text-xl font-bold tracking-tight text-slate-800">MercadoSmart</span>
+          </div>
+          <button onClick={() => setIsSidebarOpen(false)} className="md:hidden text-slate-400">
+            <X size={24} />
+          </button>
+        </div>
+
+        <div className="px-4 space-y-2 mt-4">
+          <SidebarItem id="dashboard" icon={TrendingUp} label="Dashboard" />
+          <SidebarItem id="ingest" icon={Upload} label="Escanear Folletos" />
+          <SidebarItem id="offers" icon={FileText} label="Mis Ofertas" />
+          <SidebarItem id="planner" icon={ChefHat} label="Menú Inteligente" />
+          <SidebarItem id="settings" icon={Settings} label="Preferencias" />
+        </div>
+
+        <div className="absolute bottom-0 w-full p-6 border-t border-slate-100">
+          <div className="flex items-center space-x-3 bg-slate-50 p-3 rounded-xl">
+            <div className="w-10 h-10 bg-indigo-100 rounded-full flex items-center justify-center text-indigo-600 font-bold">U</div>
+            <div className="text-sm">
+              <p className="font-semibold text-slate-700">Usuario Demo</p>
+              <p className="text-slate-400 text-xs">Plan Premium</p>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      {/* MAIN CONTENT */}
+      <main className="flex-1 overflow-y-auto">
+        {/* HEADER MOBILE */}
+        <header className="md:hidden bg-white p-4 flex items-center justify-between border-b border-slate-200 sticky top-0 z-40">
+          <button onClick={() => setIsSidebarOpen(true)}>
+            <Menu className="text-slate-600" />
+          </button>
+          <span className="font-bold text-slate-800">MercadoSmart</span>
+          <div className="w-6" /> {/* Spacer */}
+        </header>
+
+        <div className="p-6 max-w-6xl mx-auto space-y-8">
+          
+          {/* VIEW: DASHBOARD */}
+          {activeTab === 'dashboard' && (
+            <div className="space-y-6 animate-fade-in">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                  <h1 className="text-2xl font-bold text-slate-800">Hola, Usuario 👋</h1>
+                  <p className="text-slate-500">Aquí tienes el resumen de tu ahorro semanal.</p>
+                </div>
+                <button 
+                  onClick={() => setActiveTab('ingest')}
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-xl font-medium shadow-lg shadow-emerald-200 flex items-center gap-2 transition-all"
+                >
+                  <Upload size={18} /> Subir Nuevo Folleto
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <StatCard title="Ahorro Potencial" value="45.20€" sub="+12% vs semana pasada" icon={DollarSign} color="text-emerald-600" />
+                <StatCard title="Ofertas Activas" value={offers.length} sub="Detectadas por Gemini" icon={CheckCircle} color="text-blue-600" />
+                <StatCard title="Menús Generados" value={generatedMenu ? "1" : "0"} sub="Planificación lista" icon={ChefHat} color="text-purple-600" />
+              </div>
+
+              {/* Recent Activity */}
+              <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
+                <div className="p-6 border-b border-slate-100">
+                  <h3 className="font-bold text-slate-800">Archivos Procesados Recientemente</h3>
+                </div>
+                {uploadedFiles.length === 0 ? (
+                  <div className="p-10 text-center text-slate-400">
+                    <FileText className="mx-auto mb-3 opacity-50" size={48} />
+                    <p>No hay archivos subidos. ¡Sube un folleto para empezar!</p>
+                  </div>
+                ) : (
+                  <table className="w-full text-left">
+                    <thead className="bg-slate-50 text-slate-500 text-xs uppercase font-semibold">
+                      <tr>
+                        <th className="px-6 py-4">Nombre</th>
+                        <th className="px-6 py-4">Tipo</th>
+                        <th className="px-6 py-4">Estado</th>
+                        <th className="px-6 py-4">Fecha</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {uploadedFiles.map((file) => (
+                        <tr key={file.id} className="hover:bg-slate-50">
+                          <td className="px-6 py-4 font-medium text-slate-700 flex items-center gap-2">
+                            {file.type === 'pdf' ? <FileText size={16} className="text-red-500" /> : <Camera size={16} className="text-blue-500" />}
+                            {file.name}
+                          </td>
+                          <td className="px-6 py-4 text-sm text-slate-500 uppercase">{file.type}</td>
+                          <td className="px-6 py-4">
+                            <span className="bg-green-100 text-green-700 px-2 py-1 rounded-full text-xs font-bold border border-green-200">
+                              {file.status}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 text-sm text-slate-500">{file.date}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* VIEW: INGEST (SCANNER) */}
+          {activeTab === 'ingest' && (
+            <div className="max-w-2xl mx-auto space-y-6 animate-fade-in">
+              <div className="text-center space-y-2">
+                <h2 className="text-2xl font-bold text-slate-800">Centro de Ingesta IA</h2>
+                <p className="text-slate-500">Sube PDFs de supermercados o fotos de tickets. Gemini extraerá los datos y clasificará las ofertas.</p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <button 
+                  onClick={() => handleUpload('pdf')}
+                  disabled={isProcessing}
+                  className="group relative h-48 bg-white border-2 border-dashed border-slate-300 rounded-2xl flex flex-col items-center justify-center hover:border-emerald-500 hover:bg-emerald-50 transition-all"
+                >
+                  <div className="bg-red-100 p-4 rounded-full mb-3 group-hover:scale-110 transition-transform">
+                    <FileText className="text-red-600" size={32} />
+                  </div>
+                  <h3 className="font-semibold text-slate-700">Subir PDF Folleto</h3>
+                  <p className="text-xs text-slate-400 mt-1">Carrefour, Mercadona, Lidl...</p>
+                </button>
+
+                <button 
+                  onClick={() => handleUpload('ticket')}
+                  disabled={isProcessing}
+                  className="group relative h-48 bg-white border-2 border-dashed border-slate-300 rounded-2xl flex flex-col items-center justify-center hover:border-blue-500 hover:bg-blue-50 transition-all"
+                >
+                  <div className="bg-blue-100 p-4 rounded-full mb-3 group-hover:scale-110 transition-transform">
+                    <Camera className="text-blue-600" size={32} />
+                  </div>
+                  <h3 className="font-semibold text-slate-700">Escanear Ticket</h3>
+                  <p className="text-xs text-slate-400 mt-1">Sube una foto de tu compra</p>
+                </button>
+              </div>
+
+              {isProcessing && (
+                <div className="bg-indigo-50 border border-indigo-100 p-4 rounded-xl flex items-center gap-4 animate-pulse">
+                  <div className="w-6 h-6 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
+                  <div>
+                    <h4 className="font-semibold text-indigo-800">Analizando Documento...</h4>
+                    <p className="text-xs text-indigo-600">Gemini está identificando productos, precios y descuentos.</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* VIEW: OFFERS */}
+          {activeTab === 'offers' && (
+            <div className="space-y-6 animate-fade-in">
+               <div className="flex justify-between items-center">
+                  <h2 className="text-2xl font-bold text-slate-800">Ofertas Clasificadas</h2>
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" size={18} />
+                    <input type="text" placeholder="Buscar producto..." className="pl-10 pr-4 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-emerald-500" />
+                  </div>
+               </div>
+
+               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                 {offers.length === 0 ? (
+                   <div className="col-span-full py-12 text-center bg-white rounded-2xl border border-dashed border-slate-300">
+                     <p className="text-slate-500">No hay ofertas indexadas. Ve a "Escanear Folletos" para empezar.</p>
+                   </div>
+                 ) : (
+                   offers.map(offer => (
+                     <div key={offer.id} className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden">
+                       <div className="absolute top-0 right-0 bg-red-500 text-white text-xs font-bold px-3 py-1 rounded-bl-xl">
+                         -{offer.discount}
+                       </div>
+                       <div className="flex justify-between items-start mb-2">
+                         <span className="text-xs font-bold uppercase text-slate-400 tracking-wider">{offer.store}</span>
+                         <span className={`text-xs px-2 py-0.5 rounded border ${offer.quality === 'Premium' ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-slate-50 text-slate-600 border-slate-200'}`}>{offer.quality}</span>
+                       </div>
+                       <h3 className="font-bold text-lg text-slate-800 mb-1">{offer.product}</h3>
+                       <div className="flex items-end gap-2 mt-4">
+                         <span className="text-2xl font-bold text-emerald-600">{offer.price}€</span>
+                         <span className="text-sm text-slate-400 mb-1">/ {offer.unit}</span>
+                       </div>
+                       <button className="w-full mt-4 py-2 border border-emerald-200 text-emerald-700 font-medium rounded-lg text-sm hover:bg-emerald-50">
+                         Añadir a Comparador
+                       </button>
+                     </div>
+                   ))
+                 )}
+               </div>
+            </div>
+          )}
+
+          {/* VIEW: PLANNER (THE CORE FEATURE) */}
+          {activeTab === 'planner' && (
+            <div className="space-y-6 animate-fade-in">
+              <div className="flex flex-col lg:flex-row gap-8">
+                
+                {/* CONFIG PANEL */}
+                <div className="w-full lg:w-1/3 space-y-6">
+                  <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                    <h3 className="font-bold text-lg text-slate-800 mb-4 flex items-center gap-2">
+                      <Settings size={20} className="text-slate-400" /> Configuración Menú
+                    </h3>
+                    
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-1">Presupuesto Semanal (€)</label>
+                        <div className="flex items-center gap-3">
+                           <input 
+                            type="range" 
+                            min="20" 
+                            max="200" 
+                            step="5"
+                            value={budget}
+                            onChange={(e) => setBudget(e.target.value)}
+                            className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-emerald-600"
+                          />
+                          <span className="font-bold text-emerald-700 w-12">{budget}€</span>
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-1">Ingredientes Vetados</label>
+                        <input 
+                          type="text" 
+                          value={vetoedIngredients}
+                          onChange={(e) => setVetoedIngredients(e.target.value)}
+                          placeholder="Ej: Cilantro, Cerdo, Picante..."
+                          className="w-full p-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
+                        />
+                        <p className="text-xs text-slate-400 mt-1">La IA evitará recetas con estos ingredientes.</p>
+                      </div>
+
+                      <div className="pt-2">
+                        <button 
+                          onClick={generateMenu}
+                          disabled={offers.length === 0 || isProcessing}
+                          className="w-full py-3 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-xl font-bold shadow-lg shadow-emerald-200 hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed flex justify-center items-center gap-2"
+                        >
+                          {isProcessing ? (
+                            <>
+                              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                              Generando...
+                            </>
+                          ) : (
+                            <>
+                              <ChefHat size={20} /> Generar Menú Inteligente
+                            </>
+                          )}
+                        </button>
+                        {offers.length === 0 && <p className="text-xs text-red-400 mt-2 text-center">Sube folletos primero para detectar ofertas.</p>}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* RESULTS PANEL */}
+                <div className="w-full lg:w-2/3">
+                  {!generatedMenu ? (
+                     <div className="h-full min-h-[400px] flex flex-col items-center justify-center bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl p-8 text-center">
+                       <div className="bg-white p-4 rounded-full shadow-sm mb-4">
+                         <ChefHat size={40} className="text-slate-300" />
+                       </div>
+                       <h3 className="text-slate-600 font-medium">Tu menú aparecerá aquí</h3>
+                       <p className="text-slate-400 text-sm max-w-xs mt-2">Configura tu presupuesto y preferencias para que la IA diseñe tu semana ideal.</p>
+                     </div>
+                  ) : (
+                    <div className="space-y-6">
+                      <div className="bg-emerald-900 text-white p-6 rounded-2xl shadow-lg flex justify-between items-center">
+                        <div>
+                          <h3 className="font-bold text-xl">Menú Semanal Optimizado</h3>
+                          <p className="text-emerald-200 text-sm">Basado en ofertas de Mercadona, Lidl y Aldi</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-xs text-emerald-300 uppercase font-bold tracking-wider">Coste Estimado</p>
+                          <p className="text-3xl font-bold">{generatedMenu.totalCost.toFixed(2)}€</p>
+                          <span className={`text-xs px-2 py-1 rounded bg-white/20 ${generatedMenu.totalCost <= budget ? 'text-green-300' : 'text-red-300'}`}>
+                            {generatedMenu.totalCost <= budget ? 'Dentro del Presupuesto' : 'Excede Presupuesto'}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="grid gap-4">
+                        {generatedMenu.weeklyPlan.map((dayPlan, idx) => (
+                          <div key={idx} className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col md:flex-row gap-4 items-start md:items-center">
+                            <div className="w-24 font-bold text-slate-400 uppercase text-sm">{dayPlan.day}</div>
+                            
+                            <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4 w-full">
+                              {/* Lunch */}
+                              <div 
+                                onClick={() => setViewRecipe(dayPlan.lunch)}
+                                className="flex items-center gap-3 p-3 rounded-lg hover:bg-emerald-50 cursor-pointer border border-transparent hover:border-emerald-100 transition-colors group"
+                              >
+                                <div className="bg-orange-100 text-orange-600 p-2 rounded-lg">
+                                  <span className="text-xs font-bold">ALM</span>
+                                </div>
+                                <div className="flex-1">
+                                  <h4 className="font-semibold text-slate-700 text-sm group-hover:text-emerald-700">{dayPlan.lunch.name}</h4>
+                                  <p className="text-xs text-slate-400">{dayPlan.lunch.cost.toFixed(2)}€ • {dayPlan.lunch.time}</p>
+                                </div>
+                              </div>
+
+                              {/* Dinner */}
+                              <div 
+                                onClick={() => setViewRecipe(dayPlan.dinner)}
+                                className="flex items-center gap-3 p-3 rounded-lg hover:bg-emerald-50 cursor-pointer border border-transparent hover:border-emerald-100 transition-colors group"
+                              >
+                                <div className="bg-indigo-100 text-indigo-600 p-2 rounded-lg">
+                                  <span className="text-xs font-bold">CEN</span>
+                                </div>
+                                <div className="flex-1">
+                                  <h4 className="font-semibold text-slate-700 text-sm group-hover:text-emerald-700">{dayPlan.dinner.name}</h4>
+                                  <p className="text-xs text-slate-400">{dayPlan.dinner.cost.toFixed(2)}€ • {dayPlan.dinner.time}</p>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* VIEW: SETTINGS (Placeholder) */}
+          {activeTab === 'settings' && (
+             <div className="flex flex-col items-center justify-center h-96 text-center space-y-4 animate-fade-in">
+               <Settings size={64} className="text-slate-200" />
+               <h3 className="text-xl font-bold text-slate-800">Ajustes de Cuenta</h3>
+               <p className="text-slate-500 max-w-md">Aquí podrías configurar tus supermercados favoritos, alergias permanentes y conectar tu tarjeta de fidelización.</p>
+             </div>
+          )}
+
+        </div>
+      </main>
+
+      {/* RECIPE MODAL */}
+      {viewRecipe && (
+        <div className="fixed inset-0 z-[60] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden animate-scale-in">
+            <div className="relative h-40 bg-gradient-to-r from-emerald-600 to-teal-600 flex items-end p-6">
+              <button 
+                onClick={() => setViewRecipe(null)}
+                className="absolute top-4 right-4 bg-white/20 hover:bg-white/30 text-white p-2 rounded-full backdrop-blur-md transition-colors"
+              >
+                <X size={20} />
+              </button>
+              <div>
+                <h2 className="text-2xl font-bold text-white">{viewRecipe.name}</h2>
+                <div className="flex gap-4 mt-2 text-emerald-100 text-sm">
+                  <span className="flex items-center gap-1"><Clock size={14}/> {viewRecipe.time}</span>
+                  <span className="flex items-center gap-1"><DollarSign size={14}/> {viewRecipe.cost.toFixed(2)}€</span>
+                </div>
+              </div>
+            </div>
+            
+            <div className="p-6 space-y-6">
+              <div>
+                <h3 className="text-sm font-bold uppercase text-slate-400 tracking-wider mb-3">Ingredientes (En Oferta)</h3>
+                <div className="flex flex-wrap gap-2">
+                  {viewRecipe.ingredients.map((ing, i) => (
+                    <span key={i} className="bg-emerald-50 text-emerald-700 px-3 py-1 rounded-full text-sm font-medium border border-emerald-100">
+                      {ing}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <h3 className="text-sm font-bold uppercase text-slate-400 tracking-wider mb-3">Instrucciones</h3>
+                <div className="space-y-3">
+                  {viewRecipe.instructions.split(/\d\.\s/).filter(Boolean).map((step, i) => (
+                    <div key={i} className="flex gap-4">
+                      <div className="w-6 h-6 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center text-xs font-bold flex-shrink-0">
+                        {i + 1}
+                      </div>
+                      <p className="text-slate-600 text-sm leading-relaxed">{step}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <button 
+                onClick={() => setViewRecipe(null)}
+                className="w-full py-3 bg-slate-900 text-white rounded-xl font-bold hover:bg-slate-800 transition-colors"
+              >
+                Cerrar Receta
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
