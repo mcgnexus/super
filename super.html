@@ -107,10 +107,16 @@ export default function MercadoSmart() {
       const availableRecipes = RECIPE_DB.filter(recipe => {
         // Filtrar por veto
         const hasVetoed = recipe.ingredients.some(ing => 
-          vetolist.some(veto => veto && ing.toLowerCase().includes(veto))
+          vetoList.some(veto => veto && ing.toLowerCase().includes(veto))
         );
         return !hasVetoed;
       });
+
+      if (availableRecipes.length === 0) {
+        setGeneratedMenu({ weeklyPlan: [], totalCost: 0 });
+        setIsProcessing(false);
+        return;
+      }
 
       // Construir menú semanal simulado
       const days = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
@@ -562,4 +568,3 @@ export default function MercadoSmart() {
     </div>
   );
 }
-
